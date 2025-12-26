@@ -53,19 +53,45 @@ class StorageManager {
         }
     }
     
-    // Decrease count (useful for Trading - sending away a card)
-    func removePokemon(id: Int) {
-        let descriptor = FetchDescriptor<SavedPokemon>(predicate: #Predicate { $0.id == id })
-        do {
-            if let existing = try context.fetch(descriptor).first {
-                if existing.count > 0 {
+// MARK: - Increment Only (ID Only)
+    // Use this for "Add Duplicate" buttons or simple trade counting
+    func incrementPokemon(id: Int) -> Pokemon? {
+            let descriptor = FetchDescriptor<SavedPokemon>(predicate: #Predicate { $0.id == id })
+            
+            do {
+                if let existing = try context.fetch(descriptor).first {
+                    existing.count += 1
+                    try context.save()
+                    print("Incremented count for \(existing.name)")
+                    return Pokemon(saved: existing)
+                } else {
+                    print("Error: Pokemon ID \(id) not found in DB. Coder A should have seeded this!")
+                    return nil
+                }
+            } catch {
+                print("Failed to increment: \(error)")
+                return nil
+            }
+        }
+        
+    // MARK: - Decrement (For Trading)
+    // Use this when sending a card to a friend
+    func decrementPokemon(id: Int) {
+            let descriptor = FetchDescriptor<SavedPokemon>(predicate: #Predicate { $0.id == id })
+            
+            do {
+                if let existing = try context.fetch(descriptor).first, existing.count > 0 {
                     existing.count -= 1
-                    print("Decremented count for ID: \(id)")
                     try context.save()
                 }
+            } catch {
+                print("Failed to decrement: \(error)")
             }
-        } catch {
-            print("Error removing pokemon: \(error)")
         }
-    }
+    
+    func getPokemon(id: Int) -> Pokemon? {
+            let descriptor = FetchDescriptor<SavedPokemon>(predicate: #Predicate { $0.id == id })
+            return try? context.fetch(descriptor).first.map { Pokemon(saved: $0) }
+        }
+    
 }

@@ -11,7 +11,10 @@ import SwiftData
 
 struct InventoryListView: View {
     // Fetch data directly from SwiftData
-    @Query(sort: \SavedPokemon.id) private var savedPokemons: [SavedPokemon]
+    // @Query(sort: \SavedPokemon.id) private var savedPokemons: [SavedPokemon]
+    
+    @Query(filter: #Predicate<SavedPokemon> { $0.count > 0 }, sort: \SavedPokemon.id)
+    private var savedPokemons: [SavedPokemon]
     
     // Access the P2P Manager
     @EnvironmentObject var p2pManager: P2PManager
