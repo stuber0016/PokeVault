@@ -1,3 +1,11 @@
+//
+//  DataSeeder.swift
+//  PokeVault
+//
+//  Created by Petr Herčko on 26.12.2025.
+//
+
+
 import Foundation
 import SwiftData
 
@@ -13,15 +21,14 @@ class DataSeeder {
         let descriptor = FetchDescriptor<SavedPokemon>()
         let count = (try? context.fetchCount(descriptor)) ?? 0
         
-        if count >= 500 {
+        if count > 0 {
             print("Database already has \(count) pokemon. Skipping seed.")
             return
         }
         
         print("Starting Seed: Fetching 500 Pokemon...")
         
-        // 2. Fetch from API (One big batch is faster than looping pages)
-        let urlString = "https://pokeapi.co/api/v2/pokemon?limit=500"
+        let urlString = "https://pokeapi.co/api/v2/pokemon/?limit=500&offset=0"
         guard let url = URL(string: urlString) else { return }
         
         do {
@@ -32,6 +39,7 @@ class DataSeeder {
             // 3. Loop and Save
             for entry in response.results {
                 // Check if this specific ID exists (to avoid duplicates if seed crashed halfway)
+                print(entry)
                 let id = entry.id
                 let exists = try? context.fetchCount(FetchDescriptor<SavedPokemon>(predicate: #Predicate { $0.id == id }))
                 

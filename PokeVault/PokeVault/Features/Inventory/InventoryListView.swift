@@ -56,14 +56,14 @@ struct InventoryListView: View {
             }
         }
         .navigationTitle("My Inventory")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                // Temporary button to test "Adding" without Coder A
-                Button("Add Test") {
-                    let testMon = Pokemon(saved: SavedPokemon(id: Int.random(in: 1...150), name: "TestMon", spriteURLString: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"))
-                    StorageManager.shared.addPokemon(testMon)
-                }
-            }
-        }
+//        .toolbar {
+//            ToolbarItem(placement: .topBarTrailing) {
+//                // Temporary button to test "Adding" without Coder A
+//                Button("Add Test") {
+//                    let testMon = Pokemon(saved: SavedPokemon(id: Int.random(in: 1...150), name: "TestMon", spriteURLString: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"))
+//                    StorageManager.shared.addPokemon(testMon)
+//                }
+//            }
+//        }
     }
 }
