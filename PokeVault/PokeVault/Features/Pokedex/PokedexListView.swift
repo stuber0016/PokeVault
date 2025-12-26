@@ -9,6 +9,7 @@ struct PokedexListView: View {
     // Grid Layout (2 columns)
     let columns = [
         GridItem(.flexible()),
+        GridItem(.flexible()),
         GridItem(.flexible())
     ]
     
