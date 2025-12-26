@@ -1,8 +1,17 @@
+//
+//  P2PManager.swift
+//  PokeVault
+//
+//  Created by Samuel Luis Štúber on 26.12.2025.
+//
+
+
 import MultipeerConnectivity
 import SwiftUI
+import Combine
 
 class P2PManager: NSObject, ObservableObject {
-    private let serviceType = "poketrade-app" // Must be < 15 chars
+    private let serviceType = "pokevault-app" // Must be < 15 chars
     private let myPeerId = MCPeerID(displayName: UIDevice.current.name)
     private let serviceAdvertiser: MCNearbyServiceAdvertiser
     private let serviceBrowser: MCNearbyServiceBrowser

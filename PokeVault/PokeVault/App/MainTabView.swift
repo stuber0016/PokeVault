@@ -1,3 +1,11 @@
+//
+//  MainTabView.swift
+//  PokeVault
+//
+//  Created by Samuel Luis Štúber on 26.12.2025.
+//
+
+
 import SwiftUI
 
 struct MainTabView: View {
