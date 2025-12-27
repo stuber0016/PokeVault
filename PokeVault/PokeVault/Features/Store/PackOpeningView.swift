@@ -2,21 +2,27 @@ import SwiftUI
 
 struct PackOpeningView: View {
     @Environment(\.dismiss) var dismiss
+    @StateObject private var currencyManager = CurrencyManager.shared
     
     let packImageName: String
+    let price: Int
     
-    // State
+    // Animation State
     @State private var tapCount = 0
     @State private var isOpened = false
     @State private var scale: CGFloat = 1.0
+    @State private var rotationAngle: Double = 0.0 // Track rotation explicitly
     
-    // The cards we "found" from the DB
+    // Data State
     @State private var openedPokemons: [Pokemon] = []
+    
+    // Errors
+    @State private var showInsufficientFunds = false
     
     var body: some View {
         VStack {
             if isOpened {
-                // MARK: - Reveal Phase
+                // MARK: - Reveal Phase (Success)
                 ScrollView {
                     VStack(spacing: 20) {
                         Text("You found \(openedPokemons.count) Cards!")
@@ -26,12 +32,11 @@ struct PackOpeningView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
                             ForEach(openedPokemons) { pokemon in
                                 VStack {
-                                    // Use the cached image URL from the DB
                                     AsyncImage(url: pokemon.spriteURL) { phase in
                                         if let image = phase.image {
                                             image.resizable().aspectRatio(contentMode: .fit)
                                         } else {
-                                            Color.gray.opacity(0.1) // Placeholder while loading
+                                            Color.gray.opacity(0.1)
                                         }
                                     }
                                     .frame(width: 80, height: 80)
@@ -60,39 +65,68 @@ struct PackOpeningView: View {
             } else {
                 // MARK: - Tapping Phase
                 VStack(spacing: 40) {
-                    Text(tapCount == 0 ? "Tap the pack 3 times!" : "\(3 - tapCount) more...")
+                    Text(tapCount == 0 ? "Tap 3 times to open!" : "\(3 - tapCount) more...")
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Image(packImageName) // Or pass the specific pack name if you want it to match
+                    Image(packImageName)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 200, height: 200)
+                        // 1. Scale Effect (Bounce)
                         .scaleEffect(scale)
-                        .rotationEffect(.degrees(tapCount == 0 ? 0 : Double.random(in: -5...5)))
+                        // 2. Rotation Effect (Shake)
+                        .rotationEffect(.degrees(rotationAngle))
                         .onTapGesture {
                             handleTap()
                         }
-                        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: scale)
+                        // 3. The Critical "Spring" Animation
+                        .animation(.spring(response: 0.3, dampingFraction: 0.4, blendDuration: 0), value: scale)
+                        .animation(.linear(duration: 0.1), value: rotationAngle)
                 }
             }
         }
         .navigationTitle("Open Pack")
-        .navigationBarTitleDisplayMode(.inline)
+        .alert("Not Enough Coins", isPresented: $showInsufficientFunds) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text("You need \(price) coins. Go walk some more!")
+        }
     }
     
     private func handleTap() {
+        // 1. Check Funds (First tap only)
+        if tapCount == 0 {
+            if currencyManager.coins < price {
+                showInsufficientFunds = true
+                return
+            }
+        }
+        
         guard tapCount < 3 else { return }
         
-        scale = 0.9
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { scale = 1.0 }
+        // 2. Trigger Animation (Bounce & Shake)
+        scale = 0.85 // Shrink
+        rotationAngle = Double.random(in: -10...10) // Twist
+        
+        // 3. Reset Animation (Bounce Back)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            scale = 1.0
+            rotationAngle = 0.0
+        }
         
         tapCount += 1
         
         if tapCount == 3 {
+            // Deduct & Generate
+            currencyManager.coins -= price
             generatePackContent()
-            withAnimation {
-                isOpened = true
+            
+            // Delay reveal slightly so the last "bounce" finishes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation {
+                    isOpened = true
+                }
             }
         }
     }
@@ -102,10 +136,7 @@ struct PackOpeningView: View {
         var newCards: [Pokemon] = []
         
         for _ in 0..<numberOfCards {
-            // 1. Pick a random ID from the range Coder A seeded
             let randomId = Int.random(in: 1...500)
-            
-            // 2. Increment it in the DB and get the real data back
             if let pokemon = StorageManager.shared.incrementPokemon(id: randomId) {
                 newCards.append(pokemon)
             }
