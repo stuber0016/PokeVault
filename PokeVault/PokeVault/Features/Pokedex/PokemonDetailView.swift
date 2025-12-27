@@ -11,7 +11,7 @@ struct PokemonDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                
+
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(Color(.secondarySystemBackground))
@@ -29,6 +29,8 @@ struct PokemonDetailView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
+                    .saturation(pokemon.count > 0 ? 1.0 : 0.0)
+                    .opacity(pokemon.count > 0 ? 1.0 : 0.6)
                     
                     // HP BADGE (Top Left of the Pokemon)
                     if let hp = details?.stats.first(where: { $0.stat.name == "hp" })?.base_stat {
@@ -54,6 +56,19 @@ struct PokemonDetailView: View {
                 Text(pokemon.name.capitalized)
                     .font(.system(size: 40, weight: .heavy))
                     .foregroundColor(.primary)
+                HStack {
+                    Image(systemName: pokemon.count > 0 ? "checkmark.circle.fill" : "lock.fill")
+                    Text(pokemon.count > 0 ? "In Collection (x\(pokemon.count))" : "Not Caught Yet")
+                }
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(pokemon.count > 0 ? .green : .secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    (pokemon.count > 0 ? Color.green : Color.gray).opacity(0.15)
+                )
+                .clipShape(Capsule())
                 
                 // 3. STATS LIST
                 if isLoading {
