@@ -5,6 +5,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_pokevault-app._tcp</string>
+		<string>_pokevault-app._udp</string>
 	</array>
 </dict>
 </plist>
