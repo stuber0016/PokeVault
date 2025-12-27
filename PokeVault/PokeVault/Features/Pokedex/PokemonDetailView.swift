@@ -137,11 +137,12 @@ struct PokemonDetailView: View {
         if s.is_mythical { return ("MYTHICAL", .pink) }
         if s.is_legendary { return ("LEGENDARY", .yellow) }
         
-        if s.capture_rate < 50 { return ("VERY RARE", .purple) }
-        if s.capture_rate < 100 { return ("RARE", .blue) }
-        if s.capture_rate < 200 { return ("UNCOMMON", .orange) }
+        if s.capture_rate < 50 { return ("EPIC", .purple)}
+        if s.capture_rate < 80 { return ("VERY RARE", .indigo) }
+        if s.capture_rate < 135 { return ("RARE", .blue) }
+        if s.capture_rate < 200 { return ("UNCOMMON", .green) }
         
-        return ("COMMON", .green)
+        return ("COMMON", .mint)
     }
     
     func fetchDetails() async {
