@@ -13,6 +13,9 @@ struct TradeSheetView: View {
     @EnvironmentObject var p2pManager: P2PManager
     @Environment(\.dismiss) var dismiss
     
+    // Detect theme for specific text colors
+    @Environment(\.colorScheme) var colorScheme
+    
     var body: some View {
         VStack(spacing: 20) {
             // Header
@@ -20,11 +23,11 @@ struct TradeSheetView: View {
                 Text("Searching for Trainers")
                     .font(.title3)
                     .bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary) // Auto Black/White
                 
                 Text(p2pManager.transferStatus)
                     .font(.caption)
-                    .foregroundColor(.green)
+                    .foregroundColor(colorScheme == .dark ? .green : .blue) // Match radar color
                     .monospaced()
             }
             .padding(.top, 30)
@@ -35,12 +38,11 @@ struct TradeSheetView: View {
             ZStack {
                 if p2pManager.availablePeers.isEmpty {
                     Text("Scanning...")
-                        .foregroundColor(.green.opacity(0.5))
-                        .blinkEffect() // Custom modifier below
+                        .foregroundColor(colorScheme == .dark ? .green.opacity(0.5) : .blue.opacity(0.5))
+                        .blinkEffect()
                 }
                 
                 RadarView(peers: p2pManager.availablePeers) { selectedPeer in
-                    // When user taps a device icon on the radar:
                     p2pManager.connectTo(peer: selectedPeer)
                 }
             }
@@ -51,7 +53,7 @@ struct TradeSheetView: View {
             VStack(spacing: 10) {
                 Text("Offering:")
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
@@ -75,7 +77,8 @@ struct TradeSheetView: View {
                 .padding(.bottom)
             }
         }
-        .background(Color.black.edgesIgnoringSafeArea(.all)) // Radar looks best on black
+        // Use system background (White in Light Mode, Black in Dark Mode)
+        .background(Color(UIColor.systemBackground).edgesIgnoringSafeArea(.all))
         .onAppear { p2pManager.startBrowsing() }
         .onDisappear { p2pManager.stopBrowsing() }
     }
