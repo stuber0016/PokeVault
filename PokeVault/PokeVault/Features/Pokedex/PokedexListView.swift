@@ -2,73 +2,96 @@ import SwiftUI
 import SwiftData
 
 struct PokedexListView: View {
-    // 1. QUERY: Automatically fetches data from the database
-    // The view updates instantly when DataSeeder adds items
-    @Query(sort: \SavedPokemon.id) var pokemons: [SavedPokemon]
-    
-    // Grid Layout (2 columns)
-    let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    // 1. State for the Search Bar
+    @State private var searchText = ""
     
     var body: some View {
         NavigationView {
-            Group {
-                if pokemons.isEmpty {
-                    // Show this while downloading the first batch
-                    VStack {
-                        ProgressView()
-                        Text("Downloading Pokedex...")
-                            .padding(.top)
-                    }
-                } else {
-                    // The Main List
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(pokemons) { pokemon in
-                                PokemonCell(pokemon: pokemon)
-                            }
-                        }
-                        .padding()
-                    }
-                }
-            }
-            .navigationTitle("Pokedex")
+            PokemonGrid(searchText: searchText)
+                .navigationTitle("Pokedex")
+                .searchable(
+                    text: $searchText,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Search Pokemon"
+                )
         }
-        // 2. THE TRIGGER: This runs the seeder when the view loads
         .task {
             await DataSeeder.shared.seedDatabase()
         }
     }
 }
 
-// Helper View for the individual card
+struct PokemonGrid: View {
+    @Query var pokemons: [SavedPokemon]
+    
+    let searchText: String
+    
+    let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
+    
+    init(searchText: String) {
+        self.searchText = searchText
+        
+        if searchText.isEmpty {
+            _pokemons = Query(sort: \SavedPokemon.id)
+        } else {
+            _pokemons = Query(
+                filter: #Predicate { $0.name.localizedStandardContains(searchText) },
+                sort: \SavedPokemon.id
+            )
+        }
+    }
+    
+    var body: some View {
+        Group {
+            if pokemons.isEmpty {
+                if searchText.isEmpty {
+                    VStack {
+                        ProgressView()
+                        Text("Downloading Pokedex...")
+                            .padding(.top)
+                    }
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 20) {
+                        ForEach(pokemons) { pokemon in
+                            PokemonCell(pokemon: pokemon)
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
+}
+
 struct PokemonCell: View {
     let pokemon: SavedPokemon
     
     var body: some View {
         VStack {
-            // Image
             AsyncImage(url: pokemon.imageURL) { phase in
                 if let image = phase.image {
                     image.resizable().scaledToFit()
                 } else {
-                    Color.clear.frame(height: 80) // Placeholder
+                    Color.clear.frame(height: 80)
                 }
             }
             .frame(height: 100)
-            // Grayscale Logic: Black & White if count is 0
             .saturation(pokemon.count > 0 ? 1.0 : 0.0)
             .opacity(pokemon.count > 0 ? 1.0 : 0.6)
             
-            // Name
             Text(pokemon.name.capitalized)
                 .font(.headline)
                 .foregroundColor(.primary)
+                .lineLimit(1)
             
-            // Count Badge
             if pokemon.count > 0 {
                 Text("x\(pokemon.count)")
                     .font(.caption)
@@ -81,7 +104,6 @@ struct PokemonCell: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .overlay(
-            // Green border if owned
             RoundedRectangle(cornerRadius: 12)
                 .stroke(pokemon.count > 0 ? Color.green : Color.clear, lineWidth: 2)
         )
@@ -89,7 +111,6 @@ struct PokemonCell: View {
 }
 
 #Preview {
-    // We need to inject a temporary container for the preview to work
     PokedexListView()
         .modelContainer(for: SavedPokemon.self, inMemory: true)
 }
