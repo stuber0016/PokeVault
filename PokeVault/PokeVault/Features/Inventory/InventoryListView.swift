@@ -25,34 +25,37 @@ struct InventoryListView: View {
                 let pokemon = Pokemon(saved: saved)
                 let isSelected = selectedQuantities.keys.contains(pokemon.id)
                 
-                // FIX: Use ZStack to preserve view identity.
-                // The 'rowContent' stays stable (no reload), we just swap the hidden interaction layer.
                 ZStack {
-                    // 1. The Visual Content (Always present, never reparented)
-                    rowContent(saved: saved, pokemon: pokemon, isSelected: isSelected)
-                    
-                    // 2. The Interaction Layer
+                    // LAYER 1: The Interaction Layer (Background)
+                    // We put this BEHIND the content so it catches taps on empty space,
+                    // but allows the Stepper Buttons (which are on top) to still work.
                     if isSelectionMode {
-                        // Selection Mode: Overlay a transparent button to catch taps
-                        Button {
-                            toggleSelection(for: pokemon)
-                        } label: {
-                            Color.clear
-                        }
-                        .buttonStyle(.plain) // Prevents standard button styling interference
+                        // Selection Handler
+                        // Use a nearly invisible color + contentShape to ensure it catches taps
+                        Color.white.opacity(0.001)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                toggleSelection(for: pokemon)
+                            }
                     } else {
-                        // Normal Mode: Hidden NavigationLink triggers standard List navigation
-                        // The opacity(0) hides the link view, but List still renders the chevron
+                        // Navigation Handler
+                        // Hidden link that triggers when the row is tapped
                         NavigationLink(destination: PokemonDetailView(pokemon: saved)) {
                             EmptyView()
                         }
                         .opacity(0)
                     }
+                    
+                    // LAYER 2: The Visual Content (Foreground)
+                    // Kept as the last item to be visually on top.
+                    // This ensures the Stepper Buttons receive touches first.
+                    rowContent(saved: saved, pokemon: pokemon, isSelected: isSelected)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 10)) // Optional: Adjust if ZStack messes up padding
+                .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 10))
             }
         }
         .navigationTitle("Inventory")
+        .searchable(text: $searchText, prompt: "Search your cards")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -167,7 +170,7 @@ struct InventoryListView: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(isSelected ? .blue : .gray)
                     .font(.title2)
-                    .transition(.scale.combined(with: .opacity)) // Hints SwiftUI on how to animate
+                    .transition(.scale.combined(with: .opacity))
             }
             
             AsyncImage(url: pokemon.spriteURL) { i in i.resizable() } placeholder: { Color.gray }

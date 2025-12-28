@@ -86,11 +86,18 @@ struct StoreView: View {
         healthManager.fetchTodaySteps()
         let earned = currencyManager.claimSteps(currentHealthKitSteps: healthManager.currentStepCount)
         if earned > 0 {
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            
             withAnimation { justEarned = earned }
             // Hide the "+50 Coins" text after 2 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 withAnimation { justEarned = 0 }
             }
+        }
+        else {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
         }
     }
 }

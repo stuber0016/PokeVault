@@ -7,22 +7,16 @@ struct PackOpeningView: View {
     let packImageName: String
     let price: Int
     
-    // Animation State
     @State private var tapCount = 0
     @State private var isOpened = false
     @State private var scale: CGFloat = 1.0
-    @State private var rotationAngle: Double = 0.0 // Track rotation explicitly
-    
-    // Data State
+    @State private var rotationAngle: Double = 0.0
     @State private var openedPokemons: [Pokemon] = []
-    
-    // Errors
     @State private var showInsufficientFunds = false
     
     var body: some View {
         VStack {
             if isOpened {
-                // MARK: - Reveal Phase (Success)
                 ScrollView {
                     VStack(spacing: 20) {
                         Text("You found \(openedPokemons.count) Cards!")
@@ -53,9 +47,7 @@ struct PackOpeningView: View {
                         }
                         .padding()
                         
-                        Button("Done") {
-                            dismiss()
-                        }
+                        Button("Done") { dismiss() }
                         .buttonStyle(.borderedProminent)
                         .padding()
                     }
@@ -63,7 +55,6 @@ struct PackOpeningView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 
             } else {
-                // MARK: - Tapping Phase
                 VStack(spacing: 40) {
                     Text(tapCount == 0 ? "Tap 3 times to open!" : "\(3 - tapCount) more...")
                         .font(.title2)
@@ -73,14 +64,9 @@ struct PackOpeningView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 200, height: 200)
-                        // 1. Scale Effect (Bounce)
                         .scaleEffect(scale)
-                        // 2. Rotation Effect (Shake)
                         .rotationEffect(.degrees(rotationAngle))
-                        .onTapGesture {
-                            handleTap()
-                        }
-                        // 3. The Critical "Spring" Animation
+                        .onTapGesture { handleTap() }
                         .animation(.spring(response: 0.3, dampingFraction: 0.4, blendDuration: 0), value: scale)
                         .animation(.linear(duration: 0.1), value: rotationAngle)
                 }
@@ -95,21 +81,28 @@ struct PackOpeningView: View {
     }
     
     private func handleTap() {
-        // 1. Check Funds (First tap only)
-        if tapCount == 0 {
-            if currencyManager.coins < price {
-                showInsufficientFunds = true
-                return
-            }
+        if tapCount == 0 && currencyManager.coins < price {
+            showInsufficientFunds = true
+            // Error Haptic
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            return
         }
         
         guard tapCount < 3 else { return }
         
-        // 2. Trigger Animation (Bounce & Shake)
-        scale = 0.85 // Shrink
-        rotationAngle = Double.random(in: -10...10) // Twist
+        // ANIMATION: Shrink & Twist
+        scale = 0.85
+        rotationAngle = Double.random(in: -10...10)
         
-        // 3. Reset Animation (Bounce Back)
+        // HAPTIC LOGIC
+        if tapCount < 2 {
+            // Taps 1 & 2: Medium Thud
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        } else {
+            // Tap 3: Heavy Impact (The Rip)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             scale = 1.0
             rotationAngle = 0.0
@@ -118,15 +111,13 @@ struct PackOpeningView: View {
         tapCount += 1
         
         if tapCount == 3 {
-            // Deduct & Generate
             currencyManager.coins -= price
             generatePackContent()
             
-            // Delay reveal slightly so the last "bounce" finishes
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation {
-                    isOpened = true
-                }
+                // SUCCESS HAPTIC: The "Reveal" sensation
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation { isOpened = true }
             }
         }
     }
@@ -134,14 +125,12 @@ struct PackOpeningView: View {
     private func generatePackContent() {
         let numberOfCards = Int.random(in: 2...5)
         var newCards: [Pokemon] = []
-        
         for _ in 0..<numberOfCards {
             let randomId = Int.random(in: 1...500)
             if let pokemon = StorageManager.shared.incrementPokemon(id: randomId) {
                 newCards.append(pokemon)
             }
         }
-        
         self.openedPokemons = newCards
     }
 }

@@ -154,8 +154,10 @@ extension P2PManager: MCSessionDelegate {
                     receivedNames.append("\(item.quantity)x \(item.name)")
                 }
                 
-                // FIX: Use the name embedded in the package!
-                // This guarantees we see "Ash" instead of "iPhone 15"
+                let generator = UINotificationFeedbackGenerator()
+                generator.prepare()
+                generator.notificationOccurred(.success)
+                
                 let senderName = batch.senderName
                 
                 let summary = receivedNames.joined(separator: ", ")

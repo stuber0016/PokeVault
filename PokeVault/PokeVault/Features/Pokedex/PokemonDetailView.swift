@@ -374,8 +374,13 @@ struct EvolutionView: View {
     func performEvolution() {
         for _ in 0..<cost { StorageManager.shared.decrementPokemon(id: currentPokemon.id) }
         StorageManager.shared.addPokemon(id: targetPokemon.id, name: targetPokemon.name, imageURL: targetPokemon.imageURL.absoluteString)
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+            
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let notification = UINotificationFeedbackGenerator()
+            notification.notificationOccurred(.success)
+        }
         withAnimation { evolutionStage = .success }
     }
 }
