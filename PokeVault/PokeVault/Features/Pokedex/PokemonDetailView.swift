@@ -3,6 +3,7 @@ import SwiftData
 
 struct PokemonDetailView: View {
     let pokemon: SavedPokemon
+    @AppStorage("isDebugMode") private var isDebugMode = false
     
     @State private var details: PokemonDetail?
     @State private var species: PokemonSpecies?
@@ -113,6 +114,17 @@ struct PokemonDetailView: View {
                     .padding(.horizontal, 16).padding(.vertical, 8)
                     .background((pokemon.discovered ? Color.green : Color.gray).opacity(0.15))
                     .clipShape(Capsule())
+
+                    if isDebugMode {
+                        Button(action: {
+                            StorageManager.shared.incrementPokemon(id: pokemon.id)
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.leading, 5)
+                    }
                     
                     if nextEvolution != nil {
                         Text(canEvolve ? "Ready to Evolve!" : "Collect \(evolutionCost) to Evolve")
