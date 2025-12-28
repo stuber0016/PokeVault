@@ -7,9 +7,8 @@ struct PokeVaultApp: App {
     
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            RootView()
                 .environmentObject(p2pManager)
-                // Now this works because StorageManager is ObservableObject!
         }
         // This connects the Database file
         .modelContainer(StorageManager.shared.modelContainer)

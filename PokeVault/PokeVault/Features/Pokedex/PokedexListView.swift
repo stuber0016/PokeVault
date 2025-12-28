@@ -15,9 +15,9 @@ struct PokedexListView: View {
                     prompt: "Search Pokemon"
                 )
         }
-        .task {
-            await DataSeeder.shared.seedDatabase()
-        }
+//        .task {
+//            await DataSeeder.shared.seedDatabase()
+//        }
     }
 }
 
