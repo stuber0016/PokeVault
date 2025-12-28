@@ -5,19 +5,41 @@ struct PokedexListView: View {
     // 1. State for the Search Bar
     @State private var searchText = ""
     
+    @Query(sort: \SavedPokemon.id) var allPokemons: [SavedPokemon]
+    @Query(filter: #Predicate<SavedPokemon> { $0.discovered == true })
+    
+    var discoveredPokemons: [SavedPokemon]
+    
     var body: some View {
         NavigationView {
-            PokemonGrid(searchText: searchText)
-                .navigationTitle("Pokedex")
-                .searchable(
-                    text: $searchText,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search Pokemon"
-                )
+            VStack (spacing: 15) {
+                if #available(iOS 26.0, *) {
+                    PokemonGrid(searchText: searchText)
+                        .navigationTitle("Pokedex")
+                        .navigationSubtitle("Found: \(discoveredPokemons.count) / \(allPokemons.count)")
+                        .searchable(
+                            text: $searchText,
+                            placement: .navigationBarDrawer(displayMode: .always),
+                            prompt: "Search Pokemon"
+                        )
+                } else {
+                    VStack(spacing: 4) {
+                        PokemonGrid(searchText: searchText)
+                        Text("Found: \(discoveredPokemons.count) / \(allPokemons.count)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .navigationTitle("Pokedex")
+                    .searchable(
+                        text: $searchText,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Search Pokemon"
+                    )
+                }
+                
+            }
+            
         }
-//        .task {
-//            await DataSeeder.shared.seedDatabase()
-//        }
     }
 }
 
@@ -86,8 +108,8 @@ struct PokemonCell: View {
                 }
             }
             .frame(height: 100)
-            .saturation(pokemon.count > 0 ? 1.0 : 0.0)
-            .opacity(pokemon.count > 0 ? 1.0 : 0.6)
+            .saturation(pokemon.discovered ? 1.0 : 0.0)
+            .opacity(pokemon.discovered ? 1.0 : 0.6)
             
             Text(pokemon.name.capitalized)
                 .font(.headline)
@@ -107,7 +129,7 @@ struct PokemonCell: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(pokemon.count > 0 ? Color.green : Color.clear, lineWidth: 2)
+                .stroke(pokemon.discovered ? Color.green : Color.clear, lineWidth: 2)
         )
     }
 }

@@ -42,8 +42,8 @@ struct PokemonDetailView: View {
                             ProgressView().frame(height: 350)
                         }
                     }
-                    .saturation(pokemon.count > 0 ? 1.0 : 0.0)
-                    .opacity(pokemon.count > 0 ? 1.0 : 0.6)
+                    .saturation(pokemon.discovered ? 1.0 : 0.0)
+                    .opacity(pokemon.discovered ? 1.0 : 0.6)
                     
                     HStack(alignment: .top) {
                         if let hp = details?.stats.first(where: { $0.stat.name == "hp" })?.base_stat {
@@ -105,13 +105,13 @@ struct PokemonDetailView: View {
                     }
                     
                     HStack {
-                        Image(systemName: pokemon.count > 0 ? "checkmark.circle.fill" : "lock.fill")
-                        Text(pokemon.count > 0 ? "In Collection (x\(pokemon.count))" : "Not Caught Yet")
+                        Image(systemName: pokemon.discovered ? "checkmark.circle.fill" : "lock.fill")
+                        Text(pokemon.discovered ? "In Collection (x\(pokemon.count))" : "Not Caught Yet")
                     }
                     .font(.subheadline).fontWeight(.semibold)
-                    .foregroundColor(pokemon.count > 0 ? .green : .secondary)
+                    .foregroundColor(pokemon.discovered ? .green : .secondary)
                     .padding(.horizontal, 16).padding(.vertical, 8)
-                    .background((pokemon.count > 0 ? Color.green : Color.gray).opacity(0.15))
+                    .background((pokemon.discovered ? Color.green : Color.gray).opacity(0.15))
                     .clipShape(Capsule())
                     
                     if nextEvolution != nil {
