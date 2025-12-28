@@ -25,71 +25,35 @@ struct InventoryListView: View {
                 let pokemon = Pokemon(saved: saved)
                 let isSelected = selectedQuantities.keys.contains(pokemon.id)
                 
-                HStack {
-                    // 1. Selection Checkbox (Only in Selection Mode)
+                // FIX: Use ZStack to preserve view identity.
+                // The 'rowContent' stays stable (no reload), we just swap the hidden interaction layer.
+                ZStack {
+                    // 1. The Visual Content (Always present, never reparented)
+                    rowContent(saved: saved, pokemon: pokemon, isSelected: isSelected)
+                    
+                    // 2. The Interaction Layer
                     if isSelectionMode {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .blue : .gray)
-                            .font(.title2)
-                            .onTapGesture {
-                                toggleSelection(for: pokemon)
-                            }
-                    }
-                    
-                    // 2. Pokemon Info
-                    AsyncImage(url: pokemon.spriteURL) { i in i.resizable() } placeholder: { Color.gray }
-                        .frame(width: 50, height: 50)
-                    
-                    VStack(alignment: .leading) {
-                        Text(pokemon.name).font(.headline)
-                        if !isSelectionMode {
-                            Text("Owned: \(saved.count)").font(.caption).foregroundColor(.gray)
+                        // Selection Mode: Overlay a transparent button to catch taps
+                        Button {
+                            toggleSelection(for: pokemon)
+                        } label: {
+                            Color.clear
                         }
-                    }
-                    
-                    Spacer()
-                    
-                    // 3. Right Side Logic
-                    if isSelectionMode && isSelected {
-                        // SHOPPING CART STEPPER
-                        HStack {
-                            Button("-") {
-                                if let current = selectedQuantities[pokemon.id], current > 1 {
-                                    selectedQuantities[pokemon.id] = current - 1
-                                } else {
-                                    selectedQuantities.removeValue(forKey: pokemon.id)
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            
-                            Text("\(selectedQuantities[pokemon.id] ?? 0)")
-                                .frame(minWidth: 20)
-                            
-                            Button("+") {
-                                let current = selectedQuantities[pokemon.id] ?? 0
-                                if current < saved.count {
-                                    selectedQuantities[pokemon.id] = current + 1
-                                }
-                            }
-                            .buttonStyle(.bordered)
+                        .buttonStyle(.plain) // Prevents standard button styling interference
+                    } else {
+                        // Normal Mode: Hidden NavigationLink triggers standard List navigation
+                        // The opacity(0) hides the link view, but List still renders the chevron
+                        NavigationLink(destination: PokemonDetailView(pokemon: saved)) {
+                            EmptyView()
                         }
-                    } else if !isSelectionMode {
-                        // Standard View: Just show count
-                        Text("x\(saved.count)")
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
+                        .opacity(0)
                     }
                 }
-                .contentShape(Rectangle()) // Makes whole row tappable
-                .onTapGesture {
-                    if isSelectionMode { toggleSelection(for: pokemon) }
-                }
+                .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 10)) // Optional: Adjust if ZStack messes up padding
             }
         }
         .navigationTitle("Inventory")
         .toolbar {
-            // ONLY Profile button remains in toolbar now
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showProfileSheet = true
@@ -107,13 +71,11 @@ struct InventoryListView: View {
         .overlay(alignment: .bottom) {
             ZStack {
                 if isSelectionMode {
-                    // SELECTION MODE: Two Buttons (Cancel & Send)
                     HStack(spacing: 20) {
-                        // 1. Cancel Button (Red, Left)
                         Button {
                             withAnimation {
                                 isSelectionMode = false
-                                selectedQuantities = [:] // Clear selection
+                                selectedQuantities = [:]
                             }
                         } label: {
                             HStack {
@@ -128,7 +90,6 @@ struct InventoryListView: View {
                             .shadow(radius: 5)
                         }
                         
-                        // 2. Send Button (Blue, Right) - Only if items selected
                         if !selectedQuantities.isEmpty {
                             Button(action: prepareTrade) {
                                 HStack {
@@ -146,7 +107,6 @@ struct InventoryListView: View {
                         }
                     }
                 } else {
-                    // NORMAL MODE: Select Button (Green)
                     Button {
                         withAnimation {
                             isSelectionMode = true
@@ -165,7 +125,7 @@ struct InventoryListView: View {
                     }
                 }
             }
-            .padding(.bottom, 20) // Lift off the bottom edge
+            .padding(.bottom, 20)
         }
         .sheet(isPresented: $showTradeSheet) {
             TradeSheetView()
@@ -181,17 +141,13 @@ struct InventoryListView: View {
                 .zIndex(100)
             }
         }
-        // MARK: - Auto Close & Reset Logic (UPDATED)
         .onChange(of: p2pManager.shouldCloseTradeSheet) { oldValue, newValue in
             if newValue {
                 showTradeSheet = false
-                
-                // NEW: Reset the UI to default state (Exit selection mode)
                 withAnimation {
                     isSelectionMode = false
-                    selectedQuantities = [:] // Clear the cart
+                    selectedQuantities = [:]
                 }
-                
                 p2pManager.shouldCloseTradeSheet = false
             }
         }
@@ -200,6 +156,60 @@ struct InventoryListView: View {
         }
         .onDisappear {
             p2pManager.stopHosting()
+        }
+    }
+    
+    // MARK: - Row Content Helper
+    @ViewBuilder
+    func rowContent(saved: SavedPokemon, pokemon: Pokemon, isSelected: Bool) -> some View {
+        HStack {
+            if isSelectionMode {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .blue : .gray)
+                    .font(.title2)
+                    .transition(.scale.combined(with: .opacity)) // Hints SwiftUI on how to animate
+            }
+            
+            AsyncImage(url: pokemon.spriteURL) { i in i.resizable() } placeholder: { Color.gray }
+                .frame(width: 50, height: 50)
+            
+            VStack(alignment: .leading) {
+                Text(pokemon.name).font(.headline)
+                if !isSelectionMode {
+                    Text("Owned: \(saved.count)").font(.caption).foregroundColor(.gray)
+                }
+            }
+            
+            Spacer()
+            
+            if isSelectionMode && isSelected {
+                HStack {
+                    Button("-") {
+                        if let current = selectedQuantities[pokemon.id], current > 1 {
+                            selectedQuantities[pokemon.id] = current - 1
+                        } else {
+                            selectedQuantities.removeValue(forKey: pokemon.id)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Text("\(selectedQuantities[pokemon.id] ?? 0)")
+                        .frame(minWidth: 20)
+                    
+                    Button("+") {
+                        let current = selectedQuantities[pokemon.id] ?? 0
+                        if current < saved.count {
+                            selectedQuantities[pokemon.id] = current + 1
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            } else if !isSelectionMode {
+                Text("x\(saved.count)")
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+            }
         }
     }
     
@@ -224,19 +234,16 @@ struct InventoryListView: View {
     
     func prepareTrade() {
         var itemsToSend: [TradeItem] = []
-        
         for (id, qty) in selectedQuantities {
             if let saved = savedPokemons.first(where: { $0.id == id }) {
-                let item = TradeItem(
+                itemsToSend.append(TradeItem(
                     pokemonID: id,
                     name: saved.name,
                     spriteURL: saved.spriteURLString,
                     quantity: qty
-                )
-                itemsToSend.append(item)
+                ))
             }
         }
-        
         p2pManager.batchToSend = itemsToSend
         showTradeSheet = true
     }

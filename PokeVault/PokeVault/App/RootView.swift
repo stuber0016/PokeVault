@@ -31,8 +31,6 @@ struct RootView: View {
                     
                     Text("Initializing Pokedex...")
                         .font(.headline)
-                    
-                    ProgressView()
                 }
             }
         }
