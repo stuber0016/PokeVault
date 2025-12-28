@@ -11,6 +11,8 @@ import SwiftData
 
 struct RootView: View {
     @State private var isAppReady = false
+    @State private var rotate = false
+
     
     var body: some View {
         Group {
@@ -18,9 +20,14 @@ struct RootView: View {
                 MainTabView()
             } else {
                 VStack(spacing: 20) {
-                    Image(systemName: "globe.americas.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
+                    Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                                .font(.system(size: 80))
+                                .foregroundColor(.blue)
+                                .rotationEffect(.degrees(rotate ? 360 : 0))
+                                .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: rotate)
+                                .onAppear {
+                                    rotate = true
+                                }
                     
                     Text("Initializing Pokedex...")
                         .font(.headline)
@@ -37,4 +44,8 @@ struct RootView: View {
             }
         }
     }
+}
+
+#Preview {
+    RootView()
 }
