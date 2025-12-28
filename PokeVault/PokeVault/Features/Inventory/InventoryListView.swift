@@ -11,12 +11,11 @@ struct InventoryListView: View {
     @State private var isSelectionMode = false
     @State private var searchText = ""
     @State private var showTradeSheet = false
+    @State private var showReceiveSheet = false
     
-    // Profile State
     @State private var showProfileSheet = false
     @AppStorage("userAvatar") private var currentUserAvatar = "avatar_1"
     
-    // The Cart: [PokemonID : QuantitySelected]
     @State private var selectedQuantities: [Int: Int] = [:]
 
     var body: some View {
@@ -26,29 +25,31 @@ struct InventoryListView: View {
                 let isSelected = selectedQuantities.keys.contains(pokemon.id)
                 
                 ZStack {
-                    // LAYER 1: The Interaction Layer (Background)
-                    // We put this BEHIND the content so it catches taps on empty space,
-                    // but allows the Stepper Buttons (which are on top) to still work.
+                    // LAYER 1: Navigation Link (ALWAYS PRESENT)
+                    // We keep this here permanently to prevent the "Identity Change" crash.
+                    // When isSelectionMode is TRUE, the button in Layer 2 intercepts the tap,
+                    // so this link won't fire.
+                    NavigationLink(destination: PokemonDetailView(pokemon: saved)) {
+                        EmptyView()
+                    }
+                    .opacity(0)
+                    
+                    // LAYER 2: Selection Interceptor (Only in Selection Mode)
+                    // This invisible button sits on top of the link but below the content.
+                    // It catches taps on the "empty space" of the row to toggle selection.
                     if isSelectionMode {
-                        // Selection Handler
-                        // Use a nearly invisible color + contentShape to ensure it catches taps
-                        Color.white.opacity(0.001)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                toggleSelection(for: pokemon)
-                            }
-                    } else {
-                        // Navigation Handler
-                        // Hidden link that triggers when the row is tapped
-                        NavigationLink(destination: PokemonDetailView(pokemon: saved)) {
-                            EmptyView()
+                        Button {
+                            toggleSelection(for: pokemon)
+                        } label: {
+                            Color.white.opacity(0.001) // Nearly invisible, but tappable
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .contentShape(Rectangle())
                         }
-                        .opacity(0)
+                        .buttonStyle(.plain) // Important: Prevents flashing on tap
                     }
                     
-                    // LAYER 2: The Visual Content (Foreground)
-                    // Kept as the last item to be visually on top.
-                    // This ensures the Stepper Buttons receive touches first.
+                    // LAYER 3: The Visual Content (Foreground)
+                    // Kept as the top layer so Stepper Buttons (+/-) receive touches first.
                     rowContent(saved: saved, pokemon: pokemon, isSelected: isSelected)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 10))
@@ -74,8 +75,10 @@ struct InventoryListView: View {
         .overlay(alignment: .bottom) {
             ZStack {
                 if isSelectionMode {
+                    // SELECTION MODE: Cancel | Send
                     HStack(spacing: 20) {
                         Button {
+                            // This animation is now SAFE because the view structure doesn't change drastically
                             withAnimation {
                                 isSelectionMode = false
                                 selectedQuantities = [:]
@@ -85,12 +88,8 @@ struct InventoryListView: View {
                                 Image(systemName: "xmark.circle.fill")
                                 Text("Cancel")
                             }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.red)
-                            .cornerRadius(30)
-                            .shadow(radius: 5)
+                            .font(.headline).foregroundColor(.white).padding()
+                            .background(Color.red).cornerRadius(30).shadow(radius: 5)
                         }
                         
                         if !selectedQuantities.isEmpty {
@@ -99,70 +98,56 @@ struct InventoryListView: View {
                                     Image(systemName: "paperplane.fill")
                                     Text("Send \(totalItemsInCart)")
                                 }
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.blue)
-                                .cornerRadius(30)
-                                .shadow(radius: 5)
+                                .font(.headline).foregroundColor(.white).padding()
+                                .background(Color.blue).cornerRadius(30).shadow(radius: 5)
                             }
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
                 } else {
-                    Button {
-                        withAnimation {
-                            isSelectionMode = true
+                    // NORMAL MODE: Receive (Yellow) | Select (Green)
+                    HStack(spacing: 20) {
+                        Button {
+                            showReceiveSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "antenna.radiowaves.left.and.right")
+                                Text("Receive")
+                            }
+                            .font(.headline).foregroundColor(.black).padding()
+                            .background(Color.yellow).cornerRadius(30).shadow(radius: 5)
                         }
-                    } label: {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Select")
+                        
+                        Button {
+                            withAnimation { isSelectionMode = true }
+                        } label: {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Select")
+                            }
+                            .font(.headline).foregroundColor(.white).padding()
+                            .background(Color.green).cornerRadius(30).shadow(radius: 5)
                         }
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.green)
-                        .cornerRadius(30)
-                        .shadow(radius: 5)
                     }
                 }
             }
             .padding(.bottom, 20)
         }
-        .sheet(isPresented: $showTradeSheet) {
-            TradeSheetView()
-        }
-        .sheet(isPresented: $showProfileSheet) {
-            ProfileView()
-        }
-        .overlay {
-            if p2pManager.showReceivedAlert {
-                TradeSuccessView(message: p2pManager.receivedAlertMessage) {
-                    p2pManager.showReceivedAlert = false
-                }
-                .zIndex(100)
-            }
+        .sheet(isPresented: $showTradeSheet) { TradeSheetView() }
+        .sheet(isPresented: $showProfileSheet) { ProfileView() }
+        .sheet(isPresented: $showReceiveSheet) {
+            ReceiveView()
         }
         .onChange(of: p2pManager.shouldCloseTradeSheet) { oldValue, newValue in
             if newValue {
                 showTradeSheet = false
-                withAnimation {
-                    isSelectionMode = false
-                    selectedQuantities = [:]
-                }
+                withAnimation { isSelectionMode = false; selectedQuantities = [:] }
                 p2pManager.shouldCloseTradeSheet = false
             }
         }
-        .onAppear {
-            p2pManager.startHosting()
-        }
-        .onDisappear {
-            p2pManager.stopHosting()
-        }
     }
     
-    // MARK: - Row Content Helper
+    // ... (Helpers remain exactly the same) ...
     @ViewBuilder
     func rowContent(saved: SavedPokemon, pokemon: Pokemon, isSelected: Bool) -> some View {
         HStack {
@@ -182,7 +167,6 @@ struct InventoryListView: View {
                     Text("Owned: \(saved.count)").font(.caption).foregroundColor(.gray)
                 }
             }
-            
             Spacer()
             
             if isSelectionMode && isSelected {
@@ -196,55 +180,38 @@ struct InventoryListView: View {
                     }
                     .buttonStyle(.bordered)
                     
-                    Text("\(selectedQuantities[pokemon.id] ?? 0)")
-                        .frame(minWidth: 20)
+                    Text("\(selectedQuantities[pokemon.id] ?? 0)").frame(minWidth: 20)
                     
                     Button("+") {
                         let current = selectedQuantities[pokemon.id] ?? 0
-                        if current < saved.count {
-                            selectedQuantities[pokemon.id] = current + 1
-                        }
+                        if current < saved.count { selectedQuantities[pokemon.id] = current + 1 }
                     }
                     .buttonStyle(.bordered)
                 }
             } else if !isSelectionMode {
                 Text("x\(saved.count)")
-                    .padding(8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
+                    .padding(8).background(Color.gray.opacity(0.1)).cornerRadius(8)
             }
         }
     }
-    
-    // MARK: - Helpers
     
     var filteredPokemons: [SavedPokemon] {
         if searchText.isEmpty { return savedPokemons }
         return savedPokemons.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
     }
     
-    var totalItemsInCart: Int {
-        selectedQuantities.values.reduce(0, +)
-    }
+    var totalItemsInCart: Int { selectedQuantities.values.reduce(0, +) }
     
     func toggleSelection(for pokemon: Pokemon) {
-        if selectedQuantities.keys.contains(pokemon.id) {
-            selectedQuantities.removeValue(forKey: pokemon.id)
-        } else {
-            selectedQuantities[pokemon.id] = 1
-        }
+        if selectedQuantities.keys.contains(pokemon.id) { selectedQuantities.removeValue(forKey: pokemon.id) }
+        else { selectedQuantities[pokemon.id] = 1 }
     }
     
     func prepareTrade() {
         var itemsToSend: [TradeItem] = []
         for (id, qty) in selectedQuantities {
             if let saved = savedPokemons.first(where: { $0.id == id }) {
-                itemsToSend.append(TradeItem(
-                    pokemonID: id,
-                    name: saved.name,
-                    spriteURL: saved.spriteURLString,
-                    quantity: qty
-                ))
+                itemsToSend.append(TradeItem(pokemonID: id, name: saved.name, spriteURL: saved.spriteURLString, quantity: qty))
             }
         }
         p2pManager.batchToSend = itemsToSend
