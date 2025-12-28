@@ -10,6 +10,7 @@ import Foundation
 
 struct TradeBatch: Codable {
     let items: [TradeItem]
+    let senderName: String
 }
 
 struct TradeItem: Codable, Identifiable {

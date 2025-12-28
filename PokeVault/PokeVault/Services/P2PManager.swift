@@ -3,10 +3,13 @@ import SwiftUI
 import Combine
 
 class P2PManager: NSObject, ObservableObject {
+    static let shared = P2PManager()
+    
     private let serviceType = "pokevault-app"
     private let myPeerId = MCPeerID(displayName: UIDevice.current.name)
-    private let serviceAdvertiser: MCNearbyServiceAdvertiser
-    private let serviceBrowser: MCNearbyServiceBrowser
+    
+    private var serviceAdvertiser: MCNearbyServiceAdvertiser?
+    private var serviceBrowser: MCNearbyServiceBrowser?
     
     private lazy var session: MCSession = {
         let session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .required)
@@ -16,48 +19,63 @@ class P2PManager: NSObject, ObservableObject {
 
     // UI State
     @Published var availablePeers: [MCPeerID] = []
+    @Published var peerDetails: [MCPeerID: [String: String]] = [:] // Avatar/Name map
+    
     @Published var connectedPeer: MCPeerID? = nil
-    @Published var transferStatus: String = "Idle" // To show "Sending...", "Received!"
+    @Published var transferStatus: String = "Idle"
     @Published var showReceivedAlert = false
     @Published var receivedAlertMessage = ""
     @Published var shouldCloseTradeSheet = false
     
-    // The batch we intend to send (set by the UI)
     var batchToSend: [TradeItem] = []
     
     override init() {
-        self.serviceAdvertiser = MCNearbyServiceAdvertiser(peer: myPeerId, discoveryInfo: nil, serviceType: serviceType)
-        self.serviceBrowser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
         super.init()
-        
-        self.serviceAdvertiser.delegate = self
-        self.serviceBrowser.delegate = self
-        
-        // Always be ready to receive trades, even if not on the trade screen
         self.startHosting()
     }
     
-    // MARK: - Hosting (Receiver)
-    func startHosting() { serviceAdvertiser.startAdvertisingPeer() }
-    func stopHosting() { serviceAdvertiser.stopAdvertisingPeer() }
+    // MARK: - Hosting & Browsing (No changes needed here except startHosting logic)
+    func startHosting() {
+        let avatar = UserDefaults.standard.string(forKey: "userAvatar") ?? "avatar_1"
+        let name = UserDefaults.standard.string(forKey: "userName") ?? UIDevice.current.name
+        
+        let discoveryInfo = ["avatar": avatar, "name": name]
+        
+        serviceAdvertiser?.stopAdvertisingPeer()
+        serviceAdvertiser = MCNearbyServiceAdvertiser(
+            peer: myPeerId,
+            discoveryInfo: discoveryInfo,
+            serviceType: serviceType
+        )
+        serviceAdvertiser?.delegate = self
+        serviceAdvertiser?.startAdvertisingPeer()
+    }
     
-    // MARK: - Browsing (Sender)
+    func stopHosting() { serviceAdvertiser?.stopAdvertisingPeer() }
+    
+    func restartHosting() {
+        stopHosting()
+        startHosting()
+    }
+    
     func startBrowsing() {
+        serviceBrowser?.stopBrowsingForPeers()
         availablePeers.removeAll()
-        serviceBrowser.startBrowsingForPeers()
+        peerDetails.removeAll()
+        
+        serviceBrowser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
+        serviceBrowser?.delegate = self
+        serviceBrowser?.startBrowsingForPeers()
     }
     
-    func stopBrowsing() {
-        serviceBrowser.stopBrowsingForPeers()
-    }
+    func stopBrowsing() { serviceBrowser?.stopBrowsingForPeers() }
 
-    // Connect to a specific peer
     func connectTo(peer: MCPeerID) {
-        serviceBrowser.invitePeer(peer, to: session, withContext: nil, timeout: 30)
+        serviceBrowser?.invitePeer(peer, to: session, withContext: nil, timeout: 30)
         transferStatus = "Connecting to \(peer.displayName)..."
     }
 
-    // MARK: - Trade Logic
+    // MARK: - Trade Logic (UPDATED)
     private func sendBatch() {
         guard let peer = connectedPeer, !batchToSend.isEmpty else { return }
 
@@ -66,15 +84,17 @@ class P2PManager: NSObject, ObservableObject {
         }
 
         do {
-            // 1. Wrap in batch
-            let batch = TradeBatch(items: batchToSend)
+            // 1. Get MY custom name to send inside the package
+            let myName = UserDefaults.standard.string(forKey: "userName") ?? UIDevice.current.name
+            
+            // 2. Create Batch with Sender Name
+            let batch = TradeBatch(items: batchToSend, senderName: myName)
+            
             let data = try JSONEncoder().encode(batch)
             try session.send(data, toPeers: [peer], with: .reliable)
 
-            // 2. Remove items from MY inventory
             DispatchQueue.main.async {
                 for item in self.batchToSend {
-                    // Decrement X times based on quantity sent
                     for _ in 0..<item.quantity {
                         StorageManager.shared.decrementPokemon(id: item.pokemonID)
                     }
@@ -82,14 +102,11 @@ class P2PManager: NSObject, ObservableObject {
 
                 self.transferStatus = "Sent Successfully!"
 
-                // Wait 2 seconds, then trigger the sheet to close
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     self.session.disconnect()
                     self.connectedPeer = nil
                     self.transferStatus = "Idle"
                     self.batchToSend = []
-
-                    // This triggers the UI to close
                     self.shouldCloseTradeSheet = true
                 }
             }
@@ -106,21 +123,14 @@ extension P2PManager: MCSessionDelegate {
             switch state {
             case .connected:
                 self.connectedPeer = peerID
-                
-                // ✅ FIX 1: Check if WE are the one sending (batch is NOT empty)
                 if !self.batchToSend.isEmpty {
                     self.transferStatus = "Connected! Preparing transfer..."
-                    
-                    // ✅ FIX 2: Add a 0.5s delay.
-                    // Sending immediately upon connection often fails silently.
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         self.sendBatch()
                     }
                 } else {
-                    // We are the receiver
                     self.transferStatus = "Connected! Waiting for items..."
                 }
-                
             case .notConnected:
                 if self.connectedPeer == peerID {
                     self.connectedPeer = nil
@@ -137,23 +147,20 @@ extension P2PManager: MCSessionDelegate {
         if let batch = try? JSONDecoder().decode(TradeBatch.self, from: data) {
             DispatchQueue.main.async {
                 var receivedNames: [String] = []
-
                 for item in batch.items {
-                    // 1. Save to DB immediately (Safety First!)
                     for _ in 0..<item.quantity {
                         _ = StorageManager.shared.incrementPokemon(id: item.pokemonID)
                     }
                     receivedNames.append("\(item.quantity)x \(item.name)")
                 }
-
-                // 2. Prepare the Alert Message
+                
+                // FIX: Use the name embedded in the package!
+                // This guarantees we see "Ash" instead of "iPhone 15"
+                let senderName = batch.senderName
+                
                 let summary = receivedNames.joined(separator: ", ")
-                self.receivedAlertMessage = "You just received:\n\n\(summary)\n\nfrom \(peerID.displayName)!"
-                
-                // 3. Trigger the Alert on UI
+                self.receivedAlertMessage = "You just received:\n\n\(summary)\n\nfrom \(senderName)!"
                 self.showReceivedAlert = true
-                
-                // 4. Update internal status text (optional)
                 self.transferStatus = "Received: \(summary)"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                     self.transferStatus = "Idle"
@@ -162,28 +169,37 @@ extension P2PManager: MCSessionDelegate {
         }
     }
 
-    // Boilerplate stubs
     func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}
     func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {}
     func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {}
 }
 
-// MARK: - Advertiser & Browser Delegates
+// MARK: - Browser Delegates (FIXED SELF DETECTION)
 extension P2PManager: MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate {
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        // Auto-accept invitations
         invitationHandler(true, self.session)
     }
 
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
-        if !availablePeers.contains(peerID) {
-            DispatchQueue.main.async { self.availablePeers.append(peerID) }
+        // FIX: Ignore ourselves!
+        guard peerID != myPeerId else { return }
+        
+        DispatchQueue.main.async {
+            if let info = info {
+                self.peerDetails[peerID] = info
+            }
+            if !self.availablePeers.contains(peerID) {
+                self.availablePeers.append(peerID)
+            }
         }
     }
 
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        if let index = availablePeers.firstIndex(of: peerID) {
-            DispatchQueue.main.async { self.availablePeers.remove(at: index) }
+        DispatchQueue.main.async {
+            if let index = self.availablePeers.firstIndex(of: peerID) {
+                self.availablePeers.remove(at: index)
+            }
+            self.peerDetails.removeValue(forKey: peerID)
         }
     }
 }

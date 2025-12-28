@@ -12,6 +12,10 @@ struct InventoryListView: View {
     @State private var searchText = ""
     @State private var showTradeSheet = false
     
+    // Profile State
+    @State private var showProfileSheet = false
+    @AppStorage("userAvatar") private var currentUserAvatar = "avatar_1"
+    
     // The Cart: [PokemonID : QuantitySelected]
     @State private var selectedQuantities: [Int: Int] = [:]
 
@@ -48,7 +52,6 @@ struct InventoryListView: View {
                     // 3. Right Side Logic
                     if isSelectionMode && isSelected {
                         // SHOPPING CART STEPPER
-                        // Shows:  -  3  +
                         HStack {
                             Button("-") {
                                 if let current = selectedQuantities[pokemon.id], current > 1 {
@@ -64,7 +67,7 @@ struct InventoryListView: View {
                             
                             Button("+") {
                                 let current = selectedQuantities[pokemon.id] ?? 0
-                                if current < saved.count { // Don't allow sending more than you have
+                                if current < saved.count {
                                     selectedQuantities[pokemon.id] = current + 1
                                 }
                             }
@@ -86,56 +89,116 @@ struct InventoryListView: View {
         }
         .navigationTitle("Inventory")
         .toolbar {
+            // ONLY Profile button remains in toolbar now
             ToolbarItem(placement: .topBarTrailing) {
-                Button(isSelectionMode ? "Cancel" : "Select") {
-                    isSelectionMode.toggle()
-                    selectedQuantities = [:] // Clear cart on toggle
+                Button {
+                    showProfileSheet = true
+                } label: {
+                    Image(currentUserAvatar)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.primary.opacity(0.2), lineWidth: 1))
                 }
             }
         }
-        // Floating "Send" Button
+        // MARK: - Floating Action Buttons
         .overlay(alignment: .bottom) {
-            if isSelectionMode && !selectedQuantities.isEmpty {
-                Button(action: prepareTrade) {
-                    HStack {
-                        Image(systemName: "paperplane.fill")
-                        Text("Send \(totalItemsInCart) Cards")
+            ZStack {
+                if isSelectionMode {
+                    // SELECTION MODE: Two Buttons (Cancel & Send)
+                    HStack(spacing: 20) {
+                        // 1. Cancel Button (Red, Left)
+                        Button {
+                            withAnimation {
+                                isSelectionMode = false
+                                selectedQuantities = [:] // Clear selection
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("Cancel")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.red)
+                            .cornerRadius(30)
+                            .shadow(radius: 5)
+                        }
+                        
+                        // 2. Send Button (Blue, Right) - Only if items selected
+                        if !selectedQuantities.isEmpty {
+                            Button(action: prepareTrade) {
+                                HStack {
+                                    Image(systemName: "paperplane.fill")
+                                    Text("Send \(totalItemsInCart)")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.blue)
+                                .cornerRadius(30)
+                                .shadow(radius: 5)
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        }
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(30)
-                    .shadow(radius: 5)
+                } else {
+                    // NORMAL MODE: Select Button (Green)
+                    Button {
+                        withAnimation {
+                            isSelectionMode = true
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Select")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.green)
+                        .cornerRadius(30)
+                        .shadow(radius: 5)
+                    }
                 }
-                .padding(.bottom, 20)
             }
+            .padding(.bottom, 20) // Lift off the bottom edge
         }
         .sheet(isPresented: $showTradeSheet) {
-            // We reuse the Trade Sheet, but updated to support batch
             TradeSheetView()
+        }
+        .sheet(isPresented: $showProfileSheet) {
+            ProfileView()
         }
         .overlay {
             if p2pManager.showReceivedAlert {
                 TradeSuccessView(message: p2pManager.receivedAlertMessage) {
-                    // Dismiss action
                     p2pManager.showReceivedAlert = false
                 }
-                .zIndex(100) // Ensure it sits on top of everything
+                .zIndex(100)
             }
         }
+        // MARK: - Auto Close & Reset Logic (UPDATED)
         .onChange(of: p2pManager.shouldCloseTradeSheet) { oldValue, newValue in
             if newValue {
                 showTradeSheet = false
-                p2pManager.shouldCloseTradeSheet = false // Reset logic
+                
+                // NEW: Reset the UI to default state (Exit selection mode)
+                withAnimation {
+                    isSelectionMode = false
+                    selectedQuantities = [:] // Clear the cart
+                }
+                
+                p2pManager.shouldCloseTradeSheet = false
             }
         }
         .onAppear {
-            // Crucial: Start advertising so the other phone can find us!
             p2pManager.startHosting()
         }
         .onDisappear {
-            // Stop advertising when we leave (e.g. background or other tab)
             p2pManager.stopHosting()
         }
     }
@@ -160,11 +223,9 @@ struct InventoryListView: View {
     }
     
     func prepareTrade() {
-        // Convert the "Cart" dictionary into TradeItems
         var itemsToSend: [TradeItem] = []
         
         for (id, qty) in selectedQuantities {
-            // Find the original data to get Name/Sprite (inefficient but safe for 150 items)
             if let saved = savedPokemons.first(where: { $0.id == id }) {
                 let item = TradeItem(
                     pokemonID: id,
@@ -176,9 +237,7 @@ struct InventoryListView: View {
             }
         }
         
-        // Load into Manager and open sheet
         p2pManager.batchToSend = itemsToSend
         showTradeSheet = true
     }
 }
-

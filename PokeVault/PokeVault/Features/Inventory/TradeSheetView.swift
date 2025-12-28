@@ -42,7 +42,7 @@ struct TradeSheetView: View {
                         .blinkEffect()
                 }
                 
-                RadarView(peers: p2pManager.availablePeers) { selectedPeer in
+                RadarView(peers: p2pManager.availablePeers, peerDetails: p2pManager.peerDetails) { selectedPeer in
                     p2pManager.connectTo(peer: selectedPeer)
                 }
             }
