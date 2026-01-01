@@ -126,7 +126,7 @@ struct PackOpeningView: View {
         let numberOfCards = Int.random(in: 2...5)
         var newCards: [Pokemon] = []
         for _ in 0..<numberOfCards {
-            let randomId = Int.random(in: 1...500)
+            let randomId = Int.random(in: 1...1350)
             if let pokemon = StorageManager.shared.incrementPokemon(id: randomId) {
                 newCards.append(pokemon)
             }
