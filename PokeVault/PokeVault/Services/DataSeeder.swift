@@ -24,9 +24,9 @@ class DataSeeder {
             return
         }
         
-        print("Starting Seed: Fetching 500 Pokemon...")
+        print("Starting Seed: Fetching all 1350 Pokemon...")
         
-        let urlString = "https://pokeapi.co/api/v2/pokemon/?limit=500&offset=0"
+        let urlString = "https://pokeapi.co/api/v2/pokemon/?limit=100000&offset=0"
         guard let url = URL(string: urlString) else { return }
         
         do {
