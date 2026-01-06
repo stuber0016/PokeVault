@@ -3,7 +3,6 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(\.dismiss) var dismiss
     
-    // FIX: Use shared EnvironmentObject
     @EnvironmentObject var p2pManager: P2PManager
     
     @AppStorage("userName") private var userName = "Trainer"

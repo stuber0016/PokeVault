@@ -25,31 +25,22 @@ struct InventoryListView: View {
                 let isSelected = selectedQuantities.keys.contains(pokemon.id)
                 
                 ZStack {
-                    // LAYER 1: Navigation Link (ALWAYS PRESENT)
-                    // We keep this here permanently to prevent the "Identity Change" crash.
-                    // When isSelectionMode is TRUE, the button in Layer 2 intercepts the tap,
-                    // so this link won't fire.
                     NavigationLink(destination: PokemonDetailView(pokemon: saved)) {
                         EmptyView()
                     }
                     .opacity(0)
                     
-                    // LAYER 2: Selection Interceptor (Only in Selection Mode)
-                    // This invisible button sits on top of the link but below the content.
-                    // It catches taps on the "empty space" of the row to toggle selection.
                     if isSelectionMode {
                         Button {
                             toggleSelection(for: pokemon)
                         } label: {
-                            Color.white.opacity(0.001) // Nearly invisible, but tappable
+                            Color.white.opacity(0.001)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain) // Important: Prevents flashing on tap
+                        .buttonStyle(.plain)
                     }
                     
-                    // LAYER 3: The Visual Content (Foreground)
-                    // Kept as the top layer so Stepper Buttons (+/-) receive touches first.
                     rowContent(saved: saved, pokemon: pokemon, isSelected: isSelected)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 10))
@@ -75,10 +66,8 @@ struct InventoryListView: View {
         .overlay(alignment: .bottom) {
             ZStack {
                 if isSelectionMode {
-                    // SELECTION MODE: Cancel | Send
                     HStack(spacing: 20) {
                         Button {
-                            // This animation is now SAFE because the view structure doesn't change drastically
                             withAnimation {
                                 isSelectionMode = false
                                 selectedQuantities = [:]
@@ -105,7 +94,6 @@ struct InventoryListView: View {
                         }
                     }
                 } else {
-                    // NORMAL MODE: Receive (Yellow) | Select (Green)
                     HStack(spacing: 20) {
                         Button {
                             showReceiveSheet = true
@@ -147,7 +135,6 @@ struct InventoryListView: View {
         }
     }
     
-    // ... (Helpers remain exactly the same) ...
     @ViewBuilder
     func rowContent(saved: SavedPokemon, pokemon: Pokemon, isSelected: Bool) -> some View {
         HStack {

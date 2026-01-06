@@ -20,12 +20,10 @@ final class SavedPokemon {
         return URL(string: "https://pokeapi.co/api/v2/pokemon/\(id)/")!
     }
     
-    // Helper for the Image (so you don't have to convert string manually in Views)
     var imageURL: URL? {
         return URL(string: spriteURLString)
     }
     
-    // Init: Default count to 0 because when we seed the DB, we don't own them yet.
     init(id: Int, name: String, spriteURLString: String, count: Int = 0, discovered: Bool = false) {
         self.id = id
         self.name = name

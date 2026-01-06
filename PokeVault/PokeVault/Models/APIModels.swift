@@ -7,15 +7,13 @@
 
 import Foundation
 
-// 1. Matches the { "count": ..., "next": ..., "results": [...] } object
 struct PokemonListResponse: Codable {
     let count: Int
-    let next: String?      // This holds the link to the next page
+    let next: String?
     let previous: String?
     let results: [PokemonListEntry]
 }
 
-// 2. Matches the objects inside "results": [ { "name": "bulbasaur", "url": "..." } ]
 struct PokemonListEntry: Codable {
     let name: String
     let url: String
@@ -33,7 +31,6 @@ struct PokemonListEntry: Codable {
             return idNumber
         }
         
-        // Debugging: If this prints "0", we know exactly where the bug is
         print("⚠️ FAILED TO PARSE ID FROM: \(url)")
         return 0
     }

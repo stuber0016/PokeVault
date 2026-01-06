@@ -16,11 +16,10 @@ class CurrencyManager: ObservableObject {
     @AppStorage("lastClaimedSteps") var lastClaimedSteps: Int = 0
     @AppStorage("lastClaimDate") var lastClaimDate: Double = Date().timeIntervalSince1970
     
-    // Config: 100 Steps = 1 Coin
+    // CONFIG: 10 Steps = 1 Coin
     let stepsPerCoin = 10
     
     func claimSteps(currentHealthKitSteps: Int) -> Int {
-        // Reset counter if it's a new day
         if !Calendar.current.isDateInToday(Date(timeIntervalSince1970: lastClaimDate)) {
             lastClaimedSteps = 0
             lastClaimDate = Date().timeIntervalSince1970

@@ -26,7 +26,6 @@ struct StoreView: View {
                         }
                         Spacer()
                         
-                        // Claim Button
                         Button(action: claimCoins) {
                             VStack {
                                 Text("Walked: \(healthManager.currentStepCount)")
@@ -90,7 +89,6 @@ struct StoreView: View {
             generator.notificationOccurred(.success)
             
             withAnimation { justEarned = earned }
-            // Hide the "+50 Coins" text after 2 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 withAnimation { justEarned = 0 }
             }
@@ -102,7 +100,6 @@ struct StoreView: View {
     }
 }
 
-// Updated PackItem to show price
 struct PackItem: View {
     let title: String
     let imageName: String
@@ -136,7 +133,7 @@ struct PackItem: View {
             .padding(.bottom, 10)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 190) // Slightly taller
+        .frame(height: 190)
         .background(color.gradient)
         .cornerRadius(20)
         .shadow(color: color.opacity(0.4), radius: 10, x: 0, y: 5)

@@ -13,21 +13,19 @@ struct TradeSheetView: View {
     @EnvironmentObject var p2pManager: P2PManager
     @Environment(\.dismiss) var dismiss
     
-    // Detect theme for specific text colors
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack(spacing: 20) {
-            // Header
             VStack {
                 Text("Searching for Trainers")
                     .font(.title3)
                     .bold()
-                    .foregroundColor(.primary) // Auto Black/White
+                    .foregroundColor(.primary)
                 
                 Text(p2pManager.transferStatus)
                     .font(.caption)
-                    .foregroundColor(colorScheme == .dark ? .green : .blue) // Match radar color
+                    .foregroundColor(colorScheme == .dark ? .green : .blue)
                     .monospaced()
             }
             .padding(.top, 30)
@@ -49,7 +47,6 @@ struct TradeSheetView: View {
             
             Spacer()
             
-            // Bottom Info (Cart Summary)
             VStack(spacing: 10) {
                 Text("Offering:")
                     .font(.caption)
@@ -77,14 +74,12 @@ struct TradeSheetView: View {
                 .padding(.bottom)
             }
         }
-        // Use system background (White in Light Mode, Black in Dark Mode)
         .background(Color(UIColor.systemBackground).edgesIgnoringSafeArea(.all))
         .onAppear { p2pManager.startBrowsing() }
         .onDisappear { p2pManager.stopBrowsing() }
     }
 }
 
-// Helper to make text blink
 struct BlinkModifier: ViewModifier {
     @State private var isBlinking = false
     func body(content: Content) -> some View {

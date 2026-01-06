@@ -17,18 +17,16 @@ struct TradeSuccessView: View {
     
     var body: some View {
         ZStack {
-            // Dimmed Background
             Color.black.opacity(0.4)
                 .edgesIgnoringSafeArea(.all)
                 .onTapGesture { onDismiss() }
             
-            // The Card
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
                     .resizable()
                     .frame(width: 80, height: 80)
                     .foregroundColor(.green)
-                    .background(Circle().fill(Color.white)) // White background for the checkmark
+                    .background(Circle().fill(Color.white))
                     .shadow(radius: 10)
                 
                 Text("Trade Received!")

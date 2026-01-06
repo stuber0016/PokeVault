@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct PokedexListView: View {
-    // 1. State for the Search Bar
     @State private var searchText = ""
     
     @Query(sort: \SavedPokemon.id) var allPokemons: [SavedPokemon]

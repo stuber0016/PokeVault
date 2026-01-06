@@ -3,7 +3,6 @@ import MultipeerConnectivity
 
 struct RadarView: View {
     let peers: [MCPeerID]
-    // We pass the details map to look up avatars
     let peerDetails: [MCPeerID: [String: String]]
     let onTapPeer: (MCPeerID) -> Void
     
@@ -15,7 +14,6 @@ struct RadarView: View {
     
     var body: some View {
         ZStack {
-            // ... (Background Circles code remains same) ...
             ZStack {
                 backgroundColor
                 ForEach(1...4, id: \.self) { i in
@@ -57,7 +55,7 @@ struct RadarView: View {
                         .clipShape(Circle())
                         .overlay(Circle().stroke(mainColor, lineWidth: 2))
                         .shadow(color: mainColor.opacity(0.5), radius: 5)
-                        // Fallback if image not found in assets (prevents crash)
+                        // Fallback if image not found in assets
                         .background(Color.gray.opacity(0.2).clipShape(Circle()))
                     
                     Text(displayName)

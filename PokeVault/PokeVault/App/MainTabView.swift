@@ -11,7 +11,7 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            // Tab 1: Pokedex (Coder A's work)
+            // Tab 1: Store
             NavigationStack {
                 StoreView()
             }
@@ -19,7 +19,7 @@ struct MainTabView: View {
                 Label("Store ", systemImage: "storefront")
             }
             
-            // Tab 2: Pokedex (Coder A's work)
+            // Tab 2: Pokedex
             NavigationStack {
                 PokedexListView()
             }
@@ -27,7 +27,7 @@ struct MainTabView: View {
                 Label("Pokedex", systemImage: "list.bullet")
             }
             
-            // Tab 3: Inventory (Your work)
+            // Tab 3: Inventory
             NavigationStack {
                 InventoryListView()
             }

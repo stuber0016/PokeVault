@@ -14,7 +14,7 @@ struct TradeBatch: Codable {
 }
 
 struct TradeItem: Codable, Identifiable {
-    var id: Int { pokemonID } // Conformance for Identifiable
+    var id: Int { pokemonID }
     let pokemonID: Int
     let name: String
     let spriteURL: String

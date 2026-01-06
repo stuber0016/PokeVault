@@ -83,23 +83,18 @@ struct PackOpeningView: View {
     private func handleTap() {
         if tapCount == 0 && currencyManager.coins < price {
             showInsufficientFunds = true
-            // Error Haptic
             UINotificationFeedbackGenerator().notificationOccurred(.error)
             return
         }
         
         guard tapCount < 3 else { return }
         
-        // ANIMATION: Shrink & Twist
         scale = 0.85
         rotationAngle = Double.random(in: -10...10)
         
-        // HAPTIC LOGIC
         if tapCount < 2 {
-            // Taps 1 & 2: Medium Thud
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         } else {
-            // Tap 3: Heavy Impact (The Rip)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         }
         
@@ -115,7 +110,6 @@ struct PackOpeningView: View {
             generatePackContent()
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // SUCCESS HAPTIC: The "Reveal" sensation
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 withAnimation { isOpened = true }
             }
